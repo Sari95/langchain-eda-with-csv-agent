@@ -14,17 +14,14 @@ It demonstrates how to prepare data, run simple evaluations and interact with th
 
 ## Getting Started
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/USERNAME/csv-agent.git
+1. Clone the repository
+```bash git clone https://github.com/USERNAME/csv-agent.git
 cd csv-agent
 
-### 2. Create a virtual environment & install dependencies
-python -m venv venv
-source venv/bin/activate   # On Linux/Mac
-venv\Scripts\activate      # On Windows
+2. Create a virtual environment & install dependencies
+python -m venv venv source venv/bin/activate
+# On Linux/Mac venv\Scripts\activate
+# On Windows pip install -r requirements.txt
 
-pip install -r requirements.txt
-
-### 3. Run the agent
+3. Run the agent
 python main.py
