@@ -6,20 +6,24 @@ import pandas as pd
 DF_PATH = "titanic.csv"
 df = pd.read_csv(DF_PATH)
 
-# --- 1) Tools als kleine, enge Befehle definieren ---
+# --- 1) Tools definieren ---
 # WICHTIG: Tools geben Strings zurück (hier JSON-Strings), damit das LLM klar strukturierte Antworten sieht.
+from langchain_core.tools import tool
 
-def tool_schema(_: str) -> str:
+@tool
+def tool_schema(dummy: str) -> str:
     """Gibt Spaltennamen und Datentypen als JSON zurück."""
     schema = {col: str(dtype) for col, dtype in df.dtypes.items()}
     return json.dumps(schema)
 
-def tool_nulls(_: str) -> str:
+@tool
+def tool_nulls(dummy: str) -> str:
     """Gibt Spalten mit Anzahl fehlender Werte als JSON zurück (nur Spalten mit >0 Missing Values)."""
     nulls = df.isna().sum()
     result = {col: int(n) for col, n in nulls.items() if n > 0}
     return json.dumps(result)
 
+@tool
 def tool_describe(input_str: str) -> str:
     """
     Gibt describe()-Statistiken zurück.
@@ -32,47 +36,16 @@ def tool_describe(input_str: str) -> str:
     # describe() hat Multi-Index. Fürs LLM flach & lesbar machen:
     return stats.to_csv(index=True)
 
-# --- 2) Tools für LangChain „verdrahten“ ---
-from langchain.tools import Tool
-
-tools = [
-    Tool(
-        name="schema",
-        func=tool_schema,
-        description=(
-            "Gibt die Spaltennamen und ihre Datentypen als JSON zurück. "
-            "Benutze dieses Tool, wenn nach verfügbaren Spalten oder dtypes gefragt wird."
-        ),
-    ),
-    Tool(
-        name="nulls",
-        func=tool_nulls,
-        description=(
-            "Liefert ein JSON mit Spalten, die fehlende Werte haben, und der Anzahl Missing Values. "
-            "Nutze dieses Tool bei Fragen zu fehlenden Werten/NaNs."
-        ),
-    ),
-    Tool(
-        name="describe",
-        func=tool_describe,
-        description=(
-            "Gibt beschreibende Statistik (describe()) zurück. "
-            "Optional kannst du eine komma-separierte Liste numerischer Spalten als Eingabe übergeben."
-        ),
-    ),
-]
+# --- 2) Tools für LangChain verdrahten ---
+tools = [tool_schema, tool_nulls, tool_describe]
 
 # --- 3) LLM konfigurieren ---
-# Variante A: OpenAI (einfach)
-#   export OPENAI_API_KEY=...    # Windows: setx OPENAI_API_KEY "DEIN_KEY"
-#   Modell niedrigere Temperatur für stabilere Tool-Nutzung
 USE_OPENAI = bool(os.getenv("OPENAI_API_KEY"))
 
 if USE_OPENAI:
     from langchain_openai import ChatOpenAI
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
 else:
-    # Variante B: lokal mit Ollama (vorher 'ollama run llama3' o.ä. einmalig ziehen)
     from langchain_community.chat_models import ChatOllama
     llm = ChatOllama(model="llama3.1:8b", temperature=0.1)
 
@@ -97,7 +70,6 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-# >>> HIER die beiden Zeilen einfügen <<<
 _tool_desc = "\n".join(f"- {t.name}: {t.description}" for t in tools)
 _tool_names = ", ".join(t.name for t in tools)
 prompt = prompt.partial(tools=_tool_desc, tool_names=_tool_names)
@@ -113,17 +85,11 @@ agent_executor = AgentExecutor(
     max_iterations=3,
 )
 
-if __name__ == "__main__":
-    user_query = "Welche Spalten haben Missing Values? Liste 'Spalte: Anzahl'."
-    result = agent_executor.invoke({"input": user_query})
-    print("\n=== AGENT ANSWER ===")
-    print(result["output"])
-
-
-# --- Um die Datei als Modul nutzen zu können --- 
-
+# --- Um die Datei als Modul nutzen zu können ---
 def ask_agent(query: str) -> str:
     return agent_executor.invoke({"input": query})["output"]
 
 if __name__ == "__main__":
-    print(ask_agent("Welche Spalten haben Missing Values? Liste 'Spalte: Anzahl'."))
+    user_query = "Welche Spalten haben Missing Values? Liste 'Spalte: Anzahl'."
+    print("\n=== AGENT ANSWER ===")
+    print(ask_agent(user_query))
