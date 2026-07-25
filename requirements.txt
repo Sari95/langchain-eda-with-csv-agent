@@ -1,0 +1,6 @@
+pandas
+seaborn
+langchain-core
+langchain-classic
+langchain-ollama
+langchain-openai
