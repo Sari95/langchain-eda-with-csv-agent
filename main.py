@@ -46,7 +46,7 @@ if USE_OPENAI:
     from langchain_openai import ChatOpenAI
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
 else:
-    from langchain_community.chat_models import ChatOllama
+    from langchain_ollama import ChatOllama
     llm = ChatOllama(model="llama3.1:8b", temperature=0.1)
 
 # --- 4) Schmale Policy/Prompt (Agent-Verhalten) ---
@@ -75,7 +75,8 @@ _tool_names = ", ".join(t.name for t in tools)
 prompt = prompt.partial(tools=_tool_desc, tool_names=_tool_names)
 
 # --- 5) Tool-Calling-Agent erstellen & ausführen ---
-from langchain.agents import create_tool_calling_agent, AgentExecutor
+#Old: from langchain.agents import create_tool_calling_agent, AgentExecutor
+from langchain_classic.agents import create_tool_calling_agent, AgentExecutor
 
 agent = create_tool_calling_agent(llm=llm, tools=tools, prompt=prompt)
 agent_executor = AgentExecutor(
